@@ -5,11 +5,13 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .ipynb_checkpoints/
+.vscode/
 
 # 빌드 산출물
 build/
 install/
 log/
+*.out
 
 # OS
 Thumbs.db
