@@ -1,13 +1,13 @@
 
 # 1. 배달 로봇의 연산 분담과 실시간성 설계
 ## 0. 전제조건(가정포함)
-|No.|센서|주기|1회데이터(가정)|데이터량|비고|
+|No.|센서|주기|1회데이터(가정)|데이터량(/s)|비고|
 |---|----|----|----|----|---|
-|1|엔코더|1kHz|4(Byte) X 2(륜) = 8(Byte) |64kbps|
-|2|2D라이다|10Hz|360점 X (거리 4byte + 세기 4byte) = 2880byte|23.04kbps|
-|3|RGB카메라|30fps-1080p|1920 X 1080 X 3Byte X 8bit = 49.7664Mbps|1.492992Gbps|
-|4|IMU|200Hz|(가속도3축+각속도3축) X 4byte + 타임스템프 8byte = 32byte|51.2kbps|
-|5|LTE모듈|||이론상 50Mbps 실측 5~20Mbps|RTT 30~100ms
+|1|엔코더|2kHz|4(Byte) X 2(륜) = 8(Byte) |128kbps|
+|2|2D라이다|15Hz|360점 X (거리 4byte + 세기 4byte) = 2880byte|345.6kbps|
+|3|RGB카메라|60fps-720p|1280 X 720 X 3Byte = 2764800 byte |1,327,104 Gbps |
+|4|IMU|400Hz|(가속도3축+각속도3축) X 4byte + 타임스템프 8byte = 32byte|102.4kbps|
+|5|LTE모듈|||100Mbps|RTT 15ms
 ||||||
 
 
@@ -19,42 +19,91 @@
 
 |No.|작업            |위치|지연 예산|데이터량|근거|
 |---|---------------|----|---------|--------|----|
-| 1 |모터 속도 제어 |임베디드| $\leq$ 1ms | 64kbps |LTE의 RTT가 예산의 100배 - 클라우드X  Edge AI도 1ms를 보장 X |
-| 2 |장애물 감지|Edge AI| $\leq$ 100ms |23kbps|LTE 클라우드 왕복지연과 끊김 위험으로 클라우드 X  지도, 경로와 결합 = Edge  단 비상정지는 임베디드로 작동|
-| 3 |보행자 인식|Edge AI|$\leq$ 100ms |1.49Gbps|원시데이터 1.49Gbps로 이론 최대 대역폭 50Mbps를 30배 초과 - 클라우드 X  온보드GPU 경량 검출 모델로 40ms 이내 결과 검출하여 판단 계층으로 넘겨야|
+| 1 |모터 속도 제어 |임베디드| $\leq$ 1ms | 128kbps |LTE의 RTT가 예산의 15배이상 - 클라우드X  Edge AI도 1ms를 보장 X |
+| 2 |장애물 감지|Edge AI| $\leq$ 100ms |345kbps|LTE 클라우드 왕복지연과 끊김 위험으로 클라우드 X  지도, 경로와 결합 = Edge  단 비상정지는 임베디드로 작동|
+| 3 |보행자 인식|Edge AI|$\leq$ 100ms |1.33Gbps|원시데이터 1.33Gbps로 대역폭 100Mbps를 14배 초과 - 클라우드 X  온보드GPU 경량 검출 모델로 40ms 이내 결과 검출하여 판단 계층으로 넘겨야|
 | 4 |지도 기반 경로 계획|클라우드|1~5s|요청(주소등 수 백byte), 응답 waypoint 수 kbyte|지도 DB 대용량, 로봇의 현재위치를 제외한 경로를 위한 모든 데이터는 클라우드에 이미 존재|
 | 5 |배달 완료 사진 업로드|클라우드|수 초|JPEG이미지 1개 2~3Mbyte, 1배달 1건 발생|아카이빙, 고객 알림, 분쟁증빙 - 서버기능 1~2s 내 전송|
-| 6 |운행 로그 집계|클라우드|OO분|OOkbyte/s 압축시 OOmbyte/day|로컬압축저장 후 유휴시에 Wi-Fi 업로드  |
+| 6 |운행 로그 집계|클라우드|수분~수시간|수십kbyte/s 압축시 수십mbyte/day|로컬압축저장 후 유휴시에 Wi-Fi 업로드  |
 
 ## 2. 카메라 원시 영상 전송량, LTE 대비 판단
-RGB채널 1080p 30fps 카메라  
->1 Frame 당 = 1920 X 1080 X 3 byte X 8 bit = 49,766,400 bit  
-초당 = 49,766,400 bit X 30 frame/sec = 1,492,992,000 bit = 1.49 Gbps  
-하루 16.12 Tbyte
+RGB채널 720p 60fps 카메라  
+>1 Frame 당 = 1280 X 720 X 3 byte X 8 bit = 22,118,400 bit  
+초당 = 22,118,400 bit X 60 frame/sec = 1,327,104,000 bit = 약 1.33 Gbps  
+하루 11.47 Tbyte
 
-LTE 업링크 이론최대 50Mbps(Cat.4), 실측 평균 10Mbps  
-30배 ~ 150배 부족
+LTE 업링크 100Mbps(Cat.4) => 13배 이상 부족
+LTE 음영지역 진입시 장애물 감지에 대응 할 수 없기에 안전을 위해 로봇을 스스로 세울 수 밖에 없고, 이런경우 음영지역에서 스스로 벗어나지 못함.
 
-5G라도 이론상 20Gbps 이지만 국내 환경상 1Gbps 이내, RTT역시 LTE와 크게 차이 없음.
-
-대역폭, 지연시간, 통신요금 모두 부적합
+대역폭, 음영지역 대응, 통신요금 모두 부적합
 
 
 ## 3. 인지 판단 제어 계층 매핑과 주기표
 
 |계층|작업|갱신주기|실행 위치|입력->출력|
 |---|---|---|---|---|
-|인지|엔코더 읽기|1kHz|임베디드|펄스카운트 -> 이동거리|
-|제어|모터속도제어|1kHZ|임베디드|목표속도 -> PID제어|
-|인지|장애물감지|10Hz|Edge&임베디드|포인트거리세기 -> 장애물방향거리(Edge) 비상정지신호(임베디드)|
-|인지|보행자인식|30Hz|Edge|1프레임 이미지 -> 보행자거리|
-|인지|오도메트리|200Hz|Edge|축별가속도 -> 이동방향거리|
+|인지|엔코더 읽기|2kHz|임베디드|펄스카운트 -> 이동거리|
+|제어|모터속도제어|2kHZ|임베디드|목표속도 -> PID제어|
+|인지|장애물감지|15Hz|Edge&임베디드|포인트거리세기 -> 장애물방향거리(Edge) 비상정지신호(임베디드)|
+|인지|보행자인식|60Hz|Edge|1프레임 이미지 -> 보행자거리|
+|인지|오도메트리|400Hz|Edge|축별가속도 -> 이동방향거리|
 |판단|지도기반경로계획|0.05Hz|클라우드|현재위치,목적지위치 -> 경로 waypoint|
-|판단|장애물우회|10Hz|Edge|장애물&보행자위치->경로 waypoint 수정|
+|판단|장애물우회|15Hz|Edge|장애물&보행자위치->경로 waypoint 수정|
 
 <br></br>
 ### 멀티레이트
-![ex_screenshot](./images/muti_flow.png)
+
+```mermaid
+flowchart TD
+    subgraph Edge ["Edge"]
+
+        A("라이다 15Hz")
+        B("카메라 720p 60fps")
+        C("IMU 400Hz")
+
+        E["장애물감지 ≤ 100ms"]
+        F["보행자인지 ≤ 100ms"]
+        G["자세 오도매트리 ≤ 5ms"]
+
+        H["단기경로이동 이동방향&속도설정"]
+        log["운행로그저장"]
+        picture["배달완료사진촬영"]
+        
+        A --> E
+        B --> F
+        C --> G
+
+        E --> H
+        F --> H
+        G --> H
+
+        
+    end
+
+    subgraph Embaeded ["임베디드"]
+        D("모터 encoder 2kHz")
+        D --> G
+        md["모터드라이버"]
+        mc("모터제어")
+        msc["모터속도제어 2kHz"]
+        msc --> mc
+        md -..-|"긴급정지"| msc
+        A -..-> md
+    end
+
+    subgraph Cloud ["클라우드"]
+        loute["경로계획"]
+        db_map[("지도 지형정보")]
+        db_ach[("운행로그아카이빙 대시보드")]
+        db_deliver[("배달기록")]
+        db_map --> loute
+        log ---|"배달당 or Wifi 연결시 Ns"| db_ach
+        picture ---|"배달완료시 Ns"| db_deliver
+        newo["주문정보"]
+        newo --> loute
+        loute ---|1~5s| H
+    end
+```
 
 ## 4. Hard Firm Soft 실시간 분류
 |작업| 등급| 마감| 마감을 놓치면| 근거|
@@ -192,8 +241,8 @@ KERNEL=="loop*", SUBSYSTEM=="block", ATTR{loop/backing_file}=="*imu.img", SYMLIN
 
 # lidar -> loop9, imu -> loop24 에 할당됨
 ➜ ls -l /dev/robot_*
-lrwxrwxrwx 1 root root 6  9월  3 11:21 /dev/robot_imu -> loop24
-lrwxrwxrwx 1 root root 5  9월  3 11:21 /dev/robot_lidar -> loop9
+lrwxrwxrwx 1 root root 6  9월  4 11:21 /dev/robot_imu -> loop24
+lrwxrwxrwx 1 root root 5  9월  4 11:21 /dev/robot_lidar -> loop9
 
 ➜ losetup -a | grep fake      
 /dev/loop9: [66309]:17447727 (/home/pa28/fake_sensors/lidar.img)
@@ -216,8 +265,8 @@ zsh: no matches found: /dev/robot_*
 
 # imu->loop9, lidar->loop24에 할당되었고, 순서가 바뀌어도 robot_imu, robot_lidar도 정상적으로 연결됨을 확인
 ➜ ls -l /dev/robot_*         
-lrwxrwxrwx 1 root root 5  9월  3 11:24 /dev/robot_imu -> loop9
-lrwxrwxrwx 1 root root 6  9월  3 11:24 /dev/robot_lidar -> loop24
+lrwxrwxrwx 1 root root 5  9월  4 11:24 /dev/robot_imu -> loop9
+lrwxrwxrwx 1 root root 6  9월  4 11:24 /dev/robot_lidar -> loop24
 
 ➜ losetup -a | grep fake          
 /dev/loop9: [66309]:17447729 (/home/pa28/fake_sensors/imu.img)
@@ -228,17 +277,15 @@ lrwxrwxrwx 1 root root 6  9월  3 11:24 /dev/robot_lidar -> loop24
 
 | 장치 | idVendor | idproduct |
 | :---: | :---: | :---: |
-|라이다|0403|6001|
-|IMU|0403|6015|
-||||
-
+|라이다|10c4|ea60|
+|IMU|10c4|ea70|
 
 ```bash
 # 라이다
-SUBSYSTEM=="tty", KERNEL=="ttyUSB*", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", SYMLINK+="Robot_lidar"
+SUBSYSTEM=="tty", KERNEL=="ttyUSB*", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", SYMLINK+="Robot_lidar"
 
 # IMU
-SUBSYSTEM=="tty", KERNEL=="ttyUSB*", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6015", SYMLINK+="Robot_imu"
+SUBSYSTEM=="tty", KERNEL=="ttyUSB*", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea70", SYMLINK+="Robot_imu"
 ```
 - 지금처럼 같은 제조사에서 제작하여 idVendor가 같은경우 idProduct도 함께 추가하여 구분한다.
 
@@ -302,7 +349,6 @@ flowchart LR
     H --> D
     I["main"]
     I --> H
-    
 ```
 ### 바로 위 상황인 main에 conflict1 rebase -> feature/udev-ruels에서 분기한 conflict를 분기직후부터 최근의 main 이후로 옮김 -> main에서 분기된 과거에서 최근 분기로 이동
 ```mermaid
