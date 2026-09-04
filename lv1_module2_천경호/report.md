@@ -87,11 +87,82 @@ drwxrwxr-x 5 pa28 pa28  4096  9월  4 14:28 CMakeFiles
 
 # 2. 현대 C++로 센서 계층 구현
 ## 1. 다형성 루프 출력
+```bash
+lv1_module2_천경호/cpp_basics/sensors on  모듈2-시작 [?⇡] 
+➜ g++ -Wall -std=c++17 -o a.out sensor.cpp
 
+lv1_module2_천경호/cpp_basics/sensors on  모듈2-시작 [?⇡] 
+➜ ./a.out                                 
+0.1 0.1 0.1 
+0.2 0.2 0.2 
+```
 ## 2. 스택 객체와 힙 객체의 소멸 시점
+```bash
+lv1_module2_천경호/cpp_basics/sensors on  모듈2-시작 [!?⇡] 
+➜ ./a.out                                 
+동적할당 및 지역변수선언
+0.1 0.1 0.1 
+0.2 0.2 0.2 
+동적할당 종료
+IMU 소멸
+Lidar 소멸
+프로그램 종료
+IMU 소멸
+```
+> 동적할당 객체는 vector.pop_back() 으로 vector 컨테이너에서 동적할당된 객체들을 제외하자 바로 소멸됨.
+> 지역변수로 생성된 객체는 종료될 때 소멸됨
+> 지역 변수는 stack에서 프로그램과 함께 시작되며 예약되어 사용되지만, 동적할당은 용량이 얼마나 큰지 모르기 때문에 Heap 영역에서 동적으로 할당해준다. 이전 malloc / free 를 사용했을 때는 동적할당과 할당된 메모리를 객체가 사용되지 않을때 free 해줘야 하는 번거로움과 그것을 까먹는 경우 메모리 누수가 발생하였다. 하지만 지금은 unique_ptr, shared_ptr 덕분에 동적 할당이 자동으로 소멸된다.
 
-## 3. 가상 소명자를 뺏을 때의 차이
+## 3. 가상 소멸자를 뺏을 때의 차이
+```bash
+➜ ./a.out                                 
+동적할당 및 지역변수선언
+0.1 0.1 0.1 
+0.2 0.2 0.2 
+동적할당 종료
+프로그램 종료
+IMU 소멸
+```
+> 동적할당된 객체가 자동으로 소멸되지 않는다.
 
 ## 4. count_if 결과
 
+```bash
+cpp_basics/sensors/build on  모듈2-시작 [!?⇡] via △ v3.22.1 
+➜ ./sensor.out
+2-2 동적할당 및 지역변수선언
+2-1 0.1 0.1 0.1 
+2-1 0.2 0.2 0.2 
+2-2 동적할당 종료
+IMU 소멸
+Lidar 소멸
+2-4 lidar 0.35 이내 점: 3 개
+2-2 프로그램 종료
+Lidar 소멸
+IMU 소멸
+```
+
 ## 5. 누수 검출 결과
+```bash
+lv1_module2_천경호/cpp_basics/sensors on  모듈2-시작 [!?⇡] via △ v3.22.1 
+➜ g++ -g -fsanitize=address memoryleak.cpp -o mem.out
+
+lv1_module2_천경호/cpp_basics/sensors on  모듈2-시작 [!?⇡] via △ v3.22.1 
+➜ ./mem.out 
+
+=================================================================
+==69358==ERROR: LeakSanitizer: detected memory leaks
+
+Direct leak of 16000000 byte(s) in 1000000 object(s) allocated from:
+    #0 0x7efea7cb61e7 in operator new(unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:99
+    #1 0x57c63ae7d1a7 in main /home/pa28/kant_gits/physicalai-lv1-chunkyoungho/lv1_module2_천경호/cpp_basics/sensors/memoryleak.cpp:13
+    #2 0x7efea7429d8f in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58
+
+SUMMARY: AddressSanitizer: 16000000 byte(s) leaked in 1000000 allocation(s).
+
+lv1_module2_천경호/cpp_basics/sensors on  모듈2-시작 [!?⇡] via △ v3.22.1 
+❯ g++ -g -fsanitize=address memoryleak.cpp -o mem.out
+
+lv1_module2_천경호/cpp_basics/sensors on  모듈2-시작 [!?⇡] via △ v3.22.1 
+➜ ./mem.out   
+```
