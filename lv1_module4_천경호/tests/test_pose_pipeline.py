@@ -43,7 +43,24 @@ def test_camera_to_base_matches_chain(pipeline, rng):
     # TODO: (N,3) 점군을 만들어 pipeline.camera_to_base 결과가
     #       default_chain().transform("base", "camera", P) 및
     #       transform_points(T_base_link @ T_link_camera, P) 와 같은지 검사
-    raise NotImplementedError("test_camera_to_base_matches_chain 을 작성하세요")
+    # (N, 3) 카메라 점군 생성
+    P_cam = rng.normal(0.0, 1.0, (100, 3))
+    
+    # 1. PosePipeline을 통한 변환
+    P_base_pipe = pipeline.camera_to_base(P_cam)
+    
+    # 2. default_chain()을 통한 변환
+    chain = default_chain()
+    P_base_chain = chain.transform("base", "camera", P_cam)
+    
+    # 3. 행렬 직접 곱(T_base_link @ T_link_camera)을 이용한 변환
+    T_base_camera = pipeline.T_base_link @ pipeline.T_link_camera
+    P_base_direct = transform_points(T_base_camera, P_cam)
+    
+    # 검증: 세 변환 결과가 같은지 확인
+    assert np.allclose(P_base_pipe, P_base_chain)
+    assert np.allclose(P_base_pipe, P_base_direct)
+    
 
 
 # --- 2. 왕복 검증 -------------------------------------------------------------
@@ -51,7 +68,19 @@ def test_camera_to_base_matches_chain(pipeline, rng):
 def test_roundtrip_restores_points(pipeline, rng):
     # TODO: P_cam -> camera_to_base -> base_to_camera 가 P_cam 과 같은지 (allclose) 검사
     #       (3,) 단일 점과 (N,3) 점군 둘 다 확인
-    raise NotImplementedError("test_roundtrip_restores_points 를 작성하세요")
+    # 1. (N, 3) 점군 왕복 검증
+    P_cam_pts = rng.normal(0.0, 1.0, (100, 3))
+    P_base_pts = pipeline.camera_to_base(P_cam_pts)
+    P_cam_restored_pts = pipeline.base_to_camera(P_base_pts)
+    
+    assert np.allclose(P_cam_pts, P_cam_restored_pts)
+
+    # 2. (3,) 단일 점 왕복 검증
+    P_cam_single = rng.normal(0.0, 1.0, 3)
+    P_base_single = pipeline.camera_to_base(P_cam_single)
+    P_cam_restored_single = pipeline.base_to_camera(P_base_single)
+    
+    assert np.allclose(P_cam_single, P_cam_restored_single)
 
 
 # --- 여기부터는 추가 테스트 (권장) -------------------------------------------
@@ -67,3 +96,35 @@ def test_roundtrip_restores_points(pipeline, rng):
 #
 # 예) def test_rejects_wrong_shape():
 #         """(3,3) 을 넣으면 ValueError."""
+
+def test_joint_angle_zero_is_nominal(pipeline):
+    """set_joint_angle(0) 이면 T_base_link 가 초기 기준값과 동일한지 확인."""
+    T_init = pipeline._T_base_link0
+    pipeline.set_joint_angle(0.0)
+    assert np.allclose(pipeline.T_base_link, T_init)
+
+
+def test_joint_angle_changes_result(pipeline, rng):
+    """관절 각도를 바꾸면 동일한 P_cam이 base 좌표계에서 위치가 바뀌는지 확인."""
+    P_cam = rng.normal(0.0, 1.0, (10, 3))
+    
+    pipeline.set_joint_angle(0.0)
+    P_base_deg0 = pipeline.camera_to_base(P_cam)
+    
+    pipeline.set_joint_angle(np.deg2rad(30.0))
+    P_base_deg30 = pipeline.camera_to_base(P_cam)
+    
+    # 각도가 바뀌었으므로 두 변환 결과는 달라야 함
+    assert not np.allclose(P_base_deg0, P_base_deg30)
+
+
+def test_rejects_wrong_shape():
+    """T 행렬이 (4,4)가 아닐 경우 ValueError를 발생하는지 확인."""
+    T_valid = np.eye(4)
+    T_invalid = np.eye(3)
+    
+    with pytest.raises(ValueError):
+        PosePipeline(T_invalid, T_valid)
+        
+    with pytest.raises(ValueError):
+        PosePipeline(T_valid, T_invalid)

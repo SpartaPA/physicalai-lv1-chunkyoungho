@@ -1,0 +1,252 @@
+"""문제 2·3 — 회전 행렬 모듈. (학생 작성용 템플릿)
+
+축별 회전 행렬, 로드리게스 공식(임의 축 회전), Gram-Schmidt 재직교화,
+회전행렬 판정과 고유값 분해 기반 축·각 복원을 직접 구현한다.
+
+문제 1 에서 만든 `src/vectors.py` 를 그대로 재사용한다.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+
+from .vectors import det, normalize, skew, project, norm
+
+__all__ = [
+    "rot_x",
+    "rot_y",
+    "rot_z",
+    "rodrigues",
+    "gram_schmidt",
+    "orthogonality_error",
+    "is_rotation",
+    "axis_angle_from_matrix",
+    "quaternion_from_axis_angle",
+]
+
+
+# ------------------------------------------------------------ 축별 회전 행렬
+
+def rot_x(theta: float) -> np.ndarray:
+    """x축 기준 회전 행렬 (theta 는 **라디안**). x 성분은 보존된다."""
+    # TODO: 문제 2-1
+    c, s = np.cos(theta), np.sin(theta)
+    return np.array([
+        [1,0,0],
+        [0,c,-s],
+        [0,s,c]
+    ])
+
+
+def rot_y(theta: float) -> np.ndarray:
+    """y축 기준 회전 행렬 (theta 는 라디안). y 성분은 보존된다.
+
+    부호 배치가 x·z 와 반대로 보이는 이유는 노트북 2-1 에서 설명한다.
+    """
+    # TODO: 문제 2-1
+    c, s= np.cos(theta), np.sin(theta)
+    return np.array([
+        [c,0,s],
+        [0,1,0],
+        [-s,0,c]
+    ])
+
+
+def rot_z(theta: float) -> np.ndarray:
+    """z축 기준 회전 행렬 (theta 는 라디안). z 성분은 보존된다."""
+    # TODO: 문제 2-1
+    c,s = np.cos(theta), np.sin(theta)
+    return np.array([
+        [c,-s,0],
+        [s,c,0],
+        [0,0,1]
+    ])
+
+
+def rodrigues(axis, theta: float) -> np.ndarray:
+    """로드리게스 공식으로 임의 축 회전 행렬을 만든다.
+
+        R = I + sin(theta) * K + (1 - cos(theta)) * K @ K,   K = [k]_x
+
+    - 축은 함수 안에서 단위벡터로 정규화한다
+      (정규화되지 않은 축을 넣어도 같은 결과가 나와야 한다).
+    - 문제 1 의 `skew` 를 반드시 사용한다.
+    """
+    # TODO: 문제 2-5
+    c,s = np.cos(theta), np.sin(theta)
+    axis = np.asarray(axis)
+    axis = normalize(axis)
+    k=skew(axis)
+    return np.eye(3)+s*k+(1-c)*k@k
+
+
+# ------------------------------------------------------------- 재직교화 관련
+
+def gram_schmidt(A) -> np.ndarray:
+    """**열벡터**에 대해 Gram-Schmidt 직교정규화를 수행한다.
+
+        q1 = a1 / |a1|
+        vj = aj - sum_{i<j} (qi · aj) qi
+        qj = vj / |vj|
+
+    각 열에서 앞선 열 방향 성분(정사영)을 빼고 정규화하는 것이며,
+    문제 1 의 project / reject 와 같은 연산의 반복이다.
+
+    수치적으로는 성분을 빼자마자 갱신하는 modified Gram-Schmidt 가 더 안정적이다.
+    앞선 열들에 종속인 열이 있으면 ValueError.
+    """
+    # TODO: 문제 3-2
+    a=np.array(A,dtype=float)
+    m, n = a.shape
+    Q=np.zeros((m,n))
+
+    for i in range(n):
+        u = a[:,i]
+        for j in range(i):
+            u = u - project(a[:,i],Q[:,j])
+        Q[:,i]=normalize(u)
+    return Q
+
+
+def orthogonality_error(R) -> float:
+    """직교성 이탈 지표: || R^T R - I ||_F  (프로베니우스 노름).
+
+    완전한 직교행렬이면 0 이고, 클수록 직교성이 무너진 것이다.
+    """
+    # TODO: 문제 3-1
+    R = np.asarray(R, dtype=float)
+    E = R.T @ R - np.eye(R.shape[0])
+    return float(np.sqrt(np.sum(E * E)))
+
+
+def is_rotation(R, atol: float = 1e-8) -> bool:
+    """회전행렬 판정: 직교(R^T R = I) **그리고** det(R) = +1 이면 True.
+
+    det = -1 이면 직교이긴 하지만 반사가 섞여 있어 회전이 아니다.
+    3x3 이 아니면 False.
+    """
+    # TODO: 문제 3-2
+    R=np.asarray(R,dtype=float)
+    m,n=R.shape
+
+    if m!=n: # 정사각행렬인가?
+        print(f"{m}, {n}")
+        return False
+
+    if orthogonality_error(R) > atol: #직교하는가?
+        print(orthogonality_error(R))
+        return False
+
+    if np.abs(1+det(R)) < atol: # det(R)이 -1은 아닌가?
+        print(det(R))
+        return False
+
+    if np.abs(det(R)-1) > atol: #det(R)이 1인가?
+        return False
+
+    return True
+
+
+# --------------------------------------------------- 회전축·회전각·쿼터니언
+
+def axis_angle_from_matrix(R, atol: float = 1e-8):
+    """고유값 분해로 회전축을, 대각합으로 회전각을 복원한다.
+
+    - 회전축은 고유값 1 에 대응하는 실수 고유벡터다 (R k = k).
+      -> 여기서는 `np.linalg.eig` 를 써도 된다 (검산이 아니라 축 복원이 목적).
+    - 회전각은 trace(R) = 1 + 2 cos(theta) 에서 구한다.
+    - arccos 의 치역이 [0, pi] 라 '어느 쪽으로 도는지'는 알 수 없고,
+      고유벡터도 부호가 정해지지 않는다. 반대칭 성분
+      R - R^T = 2 sin(theta) [k]_x 를 이용해 부호를 맞춘다.
+    - theta = 0 (회전 없음) 과 theta = pi (sin = 0) 는 따로 처리해야 한다.
+      두 경우에 어떤 규약을 쓸지 정하고 주석으로 남긴다.
+
+    Returns
+    -------
+    axis : 단위 회전축 (3,)
+    angle : 회전각 [rad], 0 <= angle <= pi
+    """
+    # TODO: 문제 6-4
+    R = np.asarray(R, dtype=float)
+
+    #회전각 theta 복원
+    cos_theta = (np.trace(R)-1.0) / 2.0
+
+    #오차로인해 [-1,1]를 벗어나는 것을 방지
+    cos_theta = np.clip(cos_theta,-1.0, 1.0)
+    angle = np.arccos(cos_theta)
+
+    # theta == 0
+    if angle < atol:
+        return np.array([1.0,0.0,0.0]),0.0
+
+    # theta == 180
+    if np.abs(angle - np.pi)<atol:
+        M=R+np.eye(3)
+        col_norms = norm(M)
+        axis = M[:,np.argmax(col_norms)]
+        axis = axis/norm(axis)
+        return axis, np.pi
+
+    # 3. 일반적인 케이스 (0 < angle < pi)
+    # 고유값 분해를 통해 고유값 1에 대응하는 고유벡터(회전축) 탐색
+    eigenvalues, eigenvectors = np.linalg.eig(R)
+    
+    # 고유값 중 1에 가장 가까운 인덱스 선택 (실수부만 고려)
+    idx = np.argmin(np.abs(eigenvalues - 1.0))
+    axis = np.real(eigenvectors[:, idx])
+    axis = axis / norm(axis) # 단위 벡터화
+    
+    # R - R^T = 2 * sin(theta) * [k]_x 성분을 이용해 축의 부호(방향) 매칭
+    # [k]_x = [[  0, -kz,  ky],
+    #          [ kz,   0, -kx],
+    #          [-ky,  kx,   0]]
+    # 이 성분과 (R - R^T)의 부호가 일치하는지 확인
+    kx = R[2, 1] - R[1, 2]
+    ky = R[0, 2] - R[2, 0]
+    kz = R[1, 0] - R[0, 1]
+    skew_vector = np.array([kx, ky, kz])
+    
+    # skew_vector는 2 * sin(theta) * axis와 같아야 하므로, 내적을 통해 부호가 반대인지 확인
+    if np.dot(skew_vector, axis) < 0:
+        axis = -axis
+        
+    return axis, angle
+
+    raise NotImplementedError("axis_angle_from_matrix 를 구현하세요")
+
+
+def quaternion_from_axis_angle(axis, angle: float) -> np.ndarray:
+    """축-각에서 단위 쿼터니언을 만든다.
+
+        q = (k * sin(theta/2), cos(theta/2))
+
+    반환 순서는 SciPy `Rotation.as_quat()` 와 같은 **(x, y, z, w)** 로 맞춘다
+    (그래야 문제 6-5 에서 바로 비교할 수 있다).
+    """
+    # TODO: 문제 6-5
+    axis = np.asarray(axis, dtype=float)
+    
+    # 축 벡터의 크기를 1로 만드는 정규화 작업
+    norm_ = norm(axis)
+    if norm_ < 1e-12:
+        # 축의 크기가 0에 가까우면 회전하지 않는 상태(Identity)의 쿼터니언 반환
+        return np.array([0.0, 0.0, 0.0, 1.0])
+    
+    k = axis / norm_
+    
+    # 2. 절반 각도 계산
+    half_angle = angle / 2.0
+    sin_half = np.sin(half_angle)
+    cos_half = np.cos(half_angle)
+    
+    # 3. (x, y, z, w) 순서로 쿼터니언 생성
+    q = np.array([
+        k[0] * sin_half,  # x
+        k[1] * sin_half,  # y
+        k[2] * sin_half,  # z
+        cos_half          # w
+    ])
+    
+    return q
+    raise NotImplementedError("quaternion_from_axis_angle 을 구현하세요")
