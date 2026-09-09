@@ -82,7 +82,24 @@ def inv_T_batch(Ts) -> np.ndarray:
           `np.einsum("nij,nj->ni", ...)` 로 쓸 수 있다.
     """
     # TODO: 문제 5-4
-    raise NotImplementedError("inv_T_batch 를 구현하세요")
+    Ts= np.asarray(Ts)
+    l,m,n = Ts.shape
+    if m!=4 and n!=4:
+        raise ValueError("T는 4 X 4 행렬이어야 함.")
+    # 역행렬을 담을 빈 배열 생성
+    inv_T = np.zeros_like(Ts)
+    inv_T[:,3,3]=1.0
+    # 회전 행렬 파트 (N,3,3)추출 후 전치
+    R_T = np.swapaxes(Ts[:,:3,:3],1,2)
+    inv_T[:,:3,:3] = R_T
+
+
+    t=Ts[:,:3,3]
+    inv_t = -np.einsum('nij,nj->ni',R_T,t)
+    inv_T[:,:3,3] = inv_t
+
+    return inv_T
+    
 
 
 def to_homogeneous(P, w: float = 1.0) -> np.ndarray:
@@ -122,8 +139,8 @@ def transform_point(T, p) -> np.ndarray:
     if m!=4 and n!=4:
         raise ValueError("T는 4 X 4 행렬이어야 함.")
     # 위치는 뒤에 1을 붙인다.
-    p=to_homogeneous(p,1.0)    
-    Tp = T@p
+    p_h=to_homogeneous(p,1.0)    
+    Tp = T@p_h
     return Tp[0:3]
 
 
@@ -136,8 +153,8 @@ def transform_direction(T, v) -> np.ndarray:
     if m!=4 and n!=4:
         raise ValueError("T는 4 X 4 행렬이어야 함.")
     # 방향는 뒤에 0을 붙인다.
-    v=to_homogeneous(v,0.0)
-    Tv = T@v
+    v_h=to_homogeneous(v,0.0)
+    Tv = T@v_h
     
     return Tv[0:3]
 
@@ -149,7 +166,17 @@ def transform_points(T, P, w: float = 1.0) -> np.ndarray:
           메모리 접근도 행 방향이라 캐시에 유리하다.
     """
     # TODO: 문제 5-2 / 6-2
-    raise NotImplementedError("transform_points 를 구현하세요")
+    T=np.asarray(T)
+    m,n = T.shape
+    if m!=4 and n!=4:
+        raise ValueError("T는 4 X 4 행렬이어야 함.")
+    P_h=to_homogeneous(P,w)
+    TP = P_h @ T.T
+    is_1d = (P.ndim==1)
+    if is_1d:
+        return TP[0:3]
+    else:
+        return TP[:,0:3]
 
 
 def least_squares_normal_equation(A, b):
@@ -164,11 +191,39 @@ def least_squares_normal_equation(A, b):
     x : 최소자승해
     residual : b - A x
     """
-    # TODO: 문제 5-5
-    raise NotImplementedError("least_squares_normal_equation 을 구현하세요")
+    # TODO: 문제 5-5    
+    
+    A, b = np.asarray(A), np.asarray(b)
 
+    if A.ndim==2:
+        AtA = np.einsum('ji,jk->ik',A,A)
+        Atb = np.einsum('ji,j->i',A,b)
+        inv_AtA = inverse_gauss_jordan(AtA)
+        # x 계산
+        x=np.einsum('ij,j->i', inv_AtA, Atb)
+        Ax=np.einsum('ij,j->i',A,x)
+        residual = b-Ax
+        return x , residual
+    elif A.ndim==3:
+        AtA = np.einsum('nji,njk->nik',A,A)
+        Atb = np.einsum('nji,nj->ni',A,b)
+        # 배치 차원 만큼 반복문 돌기
+        num_batches = AtA.shape[0]
+        # 결과를 담을 배열
+        inv_AtA = np.zeros_like(AtA)
+        for n in range(num_batches):
+            # AtA[n]은 (K,K) 크기의 단일 행렬이므로 기존 함수 사용 가능
+            inv_AtA = inverse_gauss_jordan(AtA[n])
+        # x 계산
+        x=np.einsum('nij,nj->ni',inv_AtA, Atb)
+        Ax = np.einsum('nij,nj->ni',A,x)
+        residual = b-Ax
+        return x, residual
+    else:
+        raise ValueError("A행렬 배열 차원 오류")
 
 def rmse(residual) -> float:
     """잔차의 RMSE = sqrt(mean(r^2))."""
     # TODO: 문제 5-5
-    raise NotImplementedError("rmse 를 구현하세요")
+    r=np.asarray(residual)
+    return np.sqrt(np.mean(r*r))

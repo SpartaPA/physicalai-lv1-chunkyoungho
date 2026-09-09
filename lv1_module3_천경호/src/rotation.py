@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from .vectors import det, normalize, skew, project
+from .vectors import det, normalize, skew, project, norm
 
 __all__ = [
     "rot_x",
@@ -167,6 +167,52 @@ def axis_angle_from_matrix(R, atol: float = 1e-8):
     angle : 회전각 [rad], 0 <= angle <= pi
     """
     # TODO: 문제 6-4
+    R = np.asarray(R, dtype=float)
+
+    #회전각 theta 복원
+    cos_theta = (np.trace(R)-1.0) / 2.0
+
+    #오차로인해 [-1,1]를 벗어나는 것을 방지
+    cos_theta = np.clip(cos_theta,-1.0, 1.0)
+    angle = np.arccos(cos_theta)
+
+    # theta == 0
+    if angle < atol:
+        return np.array([1.0,0.0,0.0]),0.0
+
+    # theta == 180
+    if np.abs(angle - np.pi)<atol:
+        M=R+np.eye(3)
+        col_norms = norm(M)
+        axis = M[:,np.argmax(col_norms)]
+        axis = axis/norm(axis)
+        return axis, np.pi
+
+    # 3. 일반적인 케이스 (0 < angle < pi)
+    # 고유값 분해를 통해 고유값 1에 대응하는 고유벡터(회전축) 탐색
+    eigenvalues, eigenvectors = np.linalg.eig(R)
+    
+    # 고유값 중 1에 가장 가까운 인덱스 선택 (실수부만 고려)
+    idx = np.argmin(np.abs(eigenvalues - 1.0))
+    axis = np.real(eigenvectors[:, idx])
+    axis = axis / norm(axis) # 단위 벡터화
+    
+    # R - R^T = 2 * sin(theta) * [k]_x 성분을 이용해 축의 부호(방향) 매칭
+    # [k]_x = [[  0, -kz,  ky],
+    #          [ kz,   0, -kx],
+    #          [-ky,  kx,   0]]
+    # 이 성분과 (R - R^T)의 부호가 일치하는지 확인
+    kx = R[2, 1] - R[1, 2]
+    ky = R[0, 2] - R[2, 0]
+    kz = R[1, 0] - R[0, 1]
+    skew_vector = np.array([kx, ky, kz])
+    
+    # skew_vector는 2 * sin(theta) * axis와 같아야 하므로, 내적을 통해 부호가 반대인지 확인
+    if np.dot(skew_vector, axis) < 0:
+        axis = -axis
+        
+    return axis, angle
+
     raise NotImplementedError("axis_angle_from_matrix 를 구현하세요")
 
 
@@ -179,4 +225,28 @@ def quaternion_from_axis_angle(axis, angle: float) -> np.ndarray:
     (그래야 문제 6-5 에서 바로 비교할 수 있다).
     """
     # TODO: 문제 6-5
+    axis = np.asarray(axis, dtype=float)
+    
+    # 축 벡터의 크기를 1로 만드는 정규화 작업
+    norm_ = norm(axis)
+    if norm_ < 1e-12:
+        # 축의 크기가 0에 가까우면 회전하지 않는 상태(Identity)의 쿼터니언 반환
+        return np.array([0.0, 0.0, 0.0, 1.0])
+    
+    k = axis / norm_
+    
+    # 2. 절반 각도 계산
+    half_angle = angle / 2.0
+    sin_half = np.sin(half_angle)
+    cos_half = np.cos(half_angle)
+    
+    # 3. (x, y, z, w) 순서로 쿼터니언 생성
+    q = np.array([
+        k[0] * sin_half,  # x
+        k[1] * sin_half,  # y
+        k[2] * sin_half,  # z
+        cos_half          # w
+    ])
+    
+    return q
     raise NotImplementedError("quaternion_from_axis_angle 을 구현하세요")
