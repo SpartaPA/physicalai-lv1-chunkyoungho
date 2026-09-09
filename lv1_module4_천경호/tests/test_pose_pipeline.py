@@ -124,7 +124,7 @@ def test_rejects_wrong_shape():
     T_invalid = np.eye(3)
     
     with pytest.raises(ValueError):
-        PosePipeline(T_invalid, T_valid)
+        PosePipeline(T_invalid, T_valid) 
         
     with pytest.raises(ValueError):
         PosePipeline(T_valid, T_invalid)
