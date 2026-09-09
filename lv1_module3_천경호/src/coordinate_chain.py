@@ -59,20 +59,36 @@ class CoordinateChain:
     def _path_to_root(self, frame: str) -> list[str]:
         """frame 에서 root 까지의 경로 [frame, ..., root] 를 만든다.
 
-        root 에 연결되어 있지 않으면 KeyError.
+        root 에 연결되어 있지 않으면 KeyError.        
         """
         # TODO: 문제 6-1
-        raise NotImplementedError("_path_to_root 를 구현하세요")
+        if frame not in self.frames():
+            raise KeyError(f"존재하지 않는 프레임입니다.: '{frame}'")
 
+        path = [frame]
+        current = frame
+
+        while current != self.root:
+            if current not in self._parent:
+                #root에 도달하지 못했는데 더 이상 부모가 없는 경우 (고립된 노드)
+                raise KeyError(f"프레임 '{frame}'이(가) root '{self.root}'에 연결되어 있지 않습니다.")
+            current = self._parent[current]
+            path.append(current)
+        return path
+    
     def T_from_root(self, frame: str) -> np.ndarray:
         """root 기준 frame 의 자세 T(root <- frame).
-
         경로를 따라가며 등록된 변환을 곱한다. 곱하는 **순서**에 주의할 것:
         윗첨자/아랫첨자가 이웃끼리 상쇄되도록 놓으면 틀리지 않는다.
             T(base<-camera) = T(base<-link) @ T(link<-camera)
         """
         # TODO: 문제 6-1
-        raise NotImplementedError("T_from_root 를 구현하세요")
+        path = self._path_to_root(frame)
+        T_root_frame = np.identity(4, dtype=float)
+        
+        for cur in reversed(path[0:-1]):            
+            T_root_frame=T_root_frame@self.get(self._parent[cur],cur)
+        return T_root_frame
 
     def T(self, target: str, source: str) -> np.ndarray:
         """source 좌표를 target 좌표로 바꾸는 변환 T(target <- source).
@@ -80,15 +96,19 @@ class CoordinateChain:
         힌트: T(target<-source) = inv(T(root<-target)) @ T(root<-source)
         """
         # TODO: 문제 6-1
-        raise NotImplementedError("T 를 구현하세요")
+
+        return inv_T(self.T_from_root(target)) @ self.T_from_root(source)        
 
     def transform(self, target: str, source: str, P, w: float = 1.0) -> np.ndarray:
         """source 프레임의 점(w=1) 또는 방향(w=0)을 target 프레임으로 변환한다.
 
         (3,) 와 (N,3) 을 모두 지원해야 하고, **반복문을 쓰지 않는다**.
+
         """
         # TODO: 문제 6-2
-        raise NotImplementedError("transform 을 구현하세요")
+        T = self.T(target, source)
+        return transform_points(T,P,w)
+        
 
     def axis_angle(self, target: str, source: str):
         """T(target <- source) 의 회전 부분에서 회전축과 회전각을 복원한다."""
@@ -109,7 +129,17 @@ def default_chain() -> CoordinateChain:
     #   T_base_link   = make_T(rot_z(...), [...])
     #   T_link_camera = make_T(rot_y(...) @ rot_x(...), [...])
     #   return CoordinateChain("base").add(...).add(...)
-    raise NotImplementedError("default_chain 을 구현하세요")
+    T_base_link = make_T(rot_z(np.deg2rad(22.5)),[0.35,0.05,0.45])
+    T_link_camera = make_T(rot_y(np.deg2rad(-22.5))@rot_x(np.deg2rad(67.5)),[0.12,0.04,0.18])
+    """Examples
+        --------
+        >>> chain = CoordinateChain("base")
+        >>> chain.add("base", "link", T_base_link)
+        >>> chain.add("link", "camera", T_link_camera)
+        >>> T = chain.T("base", "camera")     # camera 좌표 -> base 좌표
+        """
+    return CoordinateChain("base").add("base", "link", T_base_link).add("link", "camera", T_link_camera)
+    
 
 
 def camera_point_to_base(p_cam, chain: CoordinateChain | None = None) -> np.ndarray:
@@ -118,10 +148,29 @@ def camera_point_to_base(p_cam, chain: CoordinateChain | None = None) -> np.ndar
     chain 이 None 이면 default_chain() 을 쓴다.
     """
     # TODO: 문제 6-1
-    raise NotImplementedError("camera_point_to_base 를 구현하세요")
+    if chain == None:
+        chain = default_chain()
+
+    #Numpy변환
+    p_cam = np.asarray(p_cam, dtype=float)
+    p_cam_shape = p_cam.shape
+
+    # camera -> base 동차변환행렬
+    T_base_camera = chain.T("base","camera")
+
+    return transform_points(T_base_camera,p_cam,1.0)
 
 
 def base_point_to_camera(p_base, chain: CoordinateChain | None = None) -> np.ndarray:
     """base 기준 좌표 -> 카메라 기준 좌표. 왕복 검증(문제 6-2)에 쓴다."""
     # TODO: 문제 6-2
-    raise NotImplementedError("base_point_to_camera 를 구현하세요")
+
+    if chain == None:
+            chain = default_chain()
+    p_base = np.asarray(p_base, dtype=float)
+
+    # camera->base 동차변환행렬
+    T_base_camera = chain.T("base","camera")
+    T_camera_base = inv_T(T_base_camera)  
+
+    return transform_points(T_camera_base,p_base)
