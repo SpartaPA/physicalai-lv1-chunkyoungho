@@ -41,32 +41,84 @@ def waypoints(request):
 # --- 1. 선형 보간이 경유점을 지나는가 -----------------------------------------
 
 def test_linear_interp_hits_waypoints(waypoints):
-    # TODO: linear_interp(t_wp, q_wp, t_wp) == q_wp 인지 검사 (shape 도 확인)
-    raise NotImplementedError("test_linear_interp_hits_waypoints 를 작성하세요")
+    t_wp, q_wp = waypoints
+    q_eval = linear_interp(t_wp, q_wp, t_wp)
+    
+    assert q_eval.shape == q_wp.shape
+    assert np.allclose(q_eval, q_wp)
 
 
 # --- 2. 큐빅 스플라인이 경유점을 지나는가 -------------------------------------
 
 def test_cubic_spline_hits_waypoints(waypoints):
-    # TODO: cubic_spline_interp(t_wp, q_wp, t_wp) == q_wp 인지 검사 (shape 도 확인)
-    raise NotImplementedError("test_cubic_spline_hits_waypoints 를 작성하세요")
+    t_wp, q_wp = waypoints
+    q_eval = cubic_spline_interp(t_wp, q_wp, t_wp)
+    
+    assert q_eval.shape == q_wp.shape
+    assert np.allclose(q_eval, q_wp)
 
 
 # --- 3. 5차 다항식 경계 조건 ---------------------------------------------------
 
 def test_quintic_boundary_conditions():
-    # TODO: t = linspace(t0, tf, 201) 로 quintic_profile(t, 0.0, 2.0, 0.0, 1.0) 를 평가해
-    #       q[0] == 0, q[-1] == 1, qd[0] == qd[-1] == 0, qdd[0] == qdd[-1] == 0 인지 검사
-    raise NotImplementedError("test_quintic_boundary_conditions 를 작성하세요")
+    t0, tf = 0.0, 2.0
+    q0, qf = 0.0, 1.0
+    t = np.linspace(t0, tf, 201)
+    
+    q, qd, qdd = quintic_profile(t, t0, tf, q0, qf)
+    
+    # 위치 경계조건
+    assert np.isclose(q[0], q0)
+    assert np.isclose(q[-1], qf)
+    
+    # 속도 경계조건 (0)
+    assert np.isclose(qd[0], 0.0)
+    assert np.isclose(qd[-1], 0.0)
+    
+    # 가속도 경계조건 (0)
+    assert np.isclose(qdd[0], 0.0)
+    assert np.isclose(qdd[-1], 0.0)
 
 
 # --- 여기부터는 추가 테스트 (권장) -------------------------------------------
-#
-# 예) def test_spline_velocity_is_continuous():
-#         """finite_diff 로 구한 스플라인 속도에는 큰 점프가 없다 (선형 보간과 비교)."""
-#
-# 예) def test_quintic_matches_finite_difference():
-#         """해석적 qd 가 finite_diff(q, t) 와 일치한다."""
-#
-# 예) def test_quintic_is_monotonic_for_zero_boundary():
-#         """경계 속도·가속도가 0 인 기본형은 q0 -> qf 로 단조 증가한다."""
+
+def test_spline_velocity_is_continuous():
+    """finite_diff 로 구한 스플라인 속도에는 큰 점프가 없다 (선형 보간과 비교)."""
+    t_dense = np.linspace(T_WP[0], T_WP[-1], 501)
+    
+    q_lin = linear_interp(T_WP, Q_WP_1D, t_dense)
+    q_spl = cubic_spline_interp(T_WP, Q_WP_1D, t_dense)
+    
+    v_lin = finite_diff(q_lin, t_dense)
+    v_spl = finite_diff(q_spl, t_dense)
+    
+    jump_v_lin = np.max(np.abs(np.diff(v_lin)))
+    jump_v_spl = np.max(np.abs(np.diff(v_spl)))
+    
+    # C2 연속성을 갖는 스플라인의 속도 변화율(가속도점프)이 선형보간보다 월등히 낮아야 함
+    assert jump_v_spl < jump_v_lin
+
+
+def test_quintic_matches_finite_difference():
+    """해석적 qd 가 finite_diff(q, t) 와 일치한다."""
+    t0, tf = 0.0, 2.0
+    t = np.linspace(t0, tf, 1001)  # 수치미분 오차를 줄이기 위한 고밀도 그리드
+    
+    q, qd, qdd = quintic_profile(t, t0, tf, 0.0, 1.0)
+    
+    qd_num = finite_diff(q, t)
+    qdd_num = finite_diff(qd, t)
+    
+    # 내부 구간(경계 부근 수치미분 오차 제외)에서 해석적 미분과 수치미분의 일치성 확인
+    assert np.allclose(qd[10:-10], qd_num[10:-10], atol=1e-3)
+    assert np.allclose(qdd[10:-10], qdd_num[10:-10], atol=1e-2)
+
+
+def test_quintic_is_monotonic_for_zero_boundary():
+    """경계 속도·가속도가 0 인 기본형은 q0 -> qf 로 단조 증가한다."""
+    t = np.linspace(0.0, 2.0, 201)
+    q, qd, _ = quintic_profile(t, 0.0, 2.0, 0.0, 1.0)
+    
+    # 속도가 전체 구간에서 0 이상이어야 함 (단조 증가)
+    assert np.all(qd >= -1e-12)
+    assert np.all(np.diff(q) >= -1e-12)

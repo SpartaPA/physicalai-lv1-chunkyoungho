@@ -71,15 +71,13 @@ def test_roundtrip_restores_points(pipeline, rng):
     # 1. (N, 3) 점군 왕복 검증
     P_cam_pts = rng.normal(0.0, 1.0, (100, 3))
     P_base_pts = pipeline.camera_to_base(P_cam_pts)
-    P_cam_restored_pts = pipeline.base_to_camera(P_base_pts)
-    
+    P_cam_restored_pts = pipeline.base_to_camera(P_base_pts)    
     assert np.allclose(P_cam_pts, P_cam_restored_pts)
 
     # 2. (3,) 단일 점 왕복 검증
     P_cam_single = rng.normal(0.0, 1.0, 3)
     P_base_single = pipeline.camera_to_base(P_cam_single)
-    P_cam_restored_single = pipeline.base_to_camera(P_base_single)
-    
+    P_cam_restored_single = pipeline.base_to_camera(P_base_single)    
     assert np.allclose(P_cam_single, P_cam_restored_single)
 
 

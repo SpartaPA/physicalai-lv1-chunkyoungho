@@ -251,6 +251,7 @@ tornado==6.5.8
 traitlets==5.16.1
 trajectory-msgs==4.9.2
 turtlesim==1.4.3
+typeguard==4.6.0
 typing_extensions==4.16.0
 tzdata==2026.3
 unique-identifier-msgs==2.2.1
