@@ -168,4 +168,17 @@ lv1_module2_천경호/cpp_basics/sensors on  모듈2-시작 [!?⇡] via △ v
 ```
 
 # 3. rclpy 노드 작성
-## 1.
+## 1. /turtle1/pose 필드 구성: ___
+```bash
+x: 5.544444561004639
+y: 5.544444561004639
+theta: 0.0
+linear_velocity: 0.0
+angular_velocity: 0.0
+---
+```
+## 2. ros2 topic hz /turtle_distance 출력: 평균 ___ Hz
+## 3. 구독자 경고 로그 (터미널 출력)
+## 4. 구독자 2개 동시 수신 확인 (양쪽 로그)
+## 5. 정사각형 주행 캡처 (turtlesim 화면)
+## 6. Ctrl+C 정상 종료 화면 (출력)

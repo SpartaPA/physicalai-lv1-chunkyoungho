@@ -7,8 +7,24 @@
   <maintainer email="ckhy2k@gmail.com">pa28</maintainer>
   <license>TODO: License declaration</license>
 
+  <!-- ROS 2 Python 클라이언트 라이브러리 -->
   <depend>rclpy</depend>
+  <!-- geometry_msgs/Twist : /turtle1/cmd_vel -->
+  <depend>geometry_msgs</depend>
+  <!-- std_msgs/Float32 : /turtle_distance, std_msgs/Header : WaypointList.header -->
+  <depend>std_msgs</depend>
+  <!-- std_srvs/SetBool, Trigger, Empty : 문제 5 자체 서비스 서버 + /clear -->
+  <depend>std_srvs</depend>
+  <!-- turtlesim/msg/Pose, turtlesim/srv/*, turtlesim/action/RotateAbsolute -->
   <depend>turtlesim</depend>
+  <!-- 문제 6 커스텀 인터페이스. 반드시 선언해야 빌드 순서(turtle_interfaces → turtle_py)가 보장됩니다. -->
+  <depend>turtle_interfaces</depend>
+  <!-- 액션 상태 코드(GoalStatus) 와 취소 응답(CancelGoal) 상수 -->
+  <depend>action_msgs</depend>
+  <!-- 파라미터 콜백 결과 타입 SetParametersResult, ParameterDescriptor -->
+  <depend>rcl_interfaces</depend>
+  <!-- launch 파일 실행에 필요 (ros2 launch, launch_ros.actions.Node) -->
+  <exec_depend>ros2launch</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """ex03_distance_publisher — 거북이 원점 거리 발행자 (launch 데모용 최소 구현).
 
-[주의] 이 파일은 문제 3 의 "정답" 이 아닙니다. 문제 9 launch 예제가 turtle_examples
-패키지만으로도 돌아가도록 넣어 둔 최소 구현입니다. 학생은 문제 3 규격을 자신의
-turtle_py 패키지에 직접 구현해야 합니다. (정사각형 주행 노드 등은 여기 없습니다.)
+[주의] 이 파일은 문제 3 규격을 turtle_py 패키지에 직접 구현한 것입니다.
+문제 9 launch 는 이 노드를 규격 이름(turtle_distance_publisher) 또는
+ex03_distance_publisher 실행파일 이름으로 띄웁니다. (정사각형 주행 노드 등은 여기 없습니다.)
 
 규격 (고정)
   - 구독 : /turtle1/pose      (turtlesim/msg/Pose)

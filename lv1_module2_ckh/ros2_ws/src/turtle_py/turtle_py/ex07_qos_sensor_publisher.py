@@ -4,8 +4,8 @@
 목적: "발행자 Best-Effort + 구독자 Reliable = 연결 안 됨" 을 직접 재현합니다.
 
   터미널 1: ros2 run turtlesim turtlesim_node
-  터미널 2: ros2 run turtle_examples ex07_qos_sensor_publisher              # 기본 best_effort
-  터미널 3: ros2 run turtle_examples ex03_distance_subscriber              # Reliable 구독자 → 아무것도 안 옴
+  터미널 2: ros2 run turtle_py ex07_qos_sensor_publisher              # 기본 best_effort
+  터미널 3: ros2 run turtle_py ex03_distance_subscriber              # Reliable 구독자 → 아무것도 안 옴
   터미널 4: ros2 topic info -v /turtle_distance                            # 양쪽 QoS 비교
   고치기  : 터미널 2 를 `--ros-args -p reliability:=reliable` 로 다시 띄우거나,
            터미널 3 대신 `ex07_qos_subscriber --ros-args -p reliability:=best_effort` 를 띄웁니다.

@@ -9,8 +9,8 @@
   float32 remaining  ← feedback : 남은 각도
 
 사용법
-  ros2 run turtle_examples ex05_rotate_absolute_client --theta 3.0
-  ros2 run turtle_examples ex05_rotate_absolute_client --theta 3.0 --cancel-after 1.0
+  ros2 run turtle_py ex05_rotate_absolute_client --theta 3.0
+  ros2 run turtle_py ex05_rotate_absolute_client --theta 3.0 --cancel-after 1.0
       → 1.0 초 뒤 cancel_goal_async() 를 보내고, 그 시점의 /turtle1/pose theta 를 기록합니다.
 
 액션 클라이언트의 3단계 (모두 Future 기반 비동기)

@@ -11,14 +11,14 @@
 
 실험 예
   # (1) 비호환 재현: 발행자 best_effort(ex07_qos_sensor_publisher) + 이 구독자 reliable(기본)
-  ros2 run turtle_examples ex07_qos_subscriber
+  ros2 run turtle_py ex07_qos_subscriber
   # (2) 고치기: 구독자를 best_effort 로
-  ros2 run turtle_examples ex07_qos_subscriber --ros-args -p reliability:=best_effort
+  ros2 run turtle_py ex07_qos_subscriber --ros-args -p reliability:=best_effort
   # (3) depth=1 + 콜백 지연 0.5s: 10 Hz 발행 중 초당 2개만 처리되고 나머지는 큐에서 밀려 사라짐
-  ros2 run turtle_examples ex07_qos_subscriber --ros-args -p history_depth:=1 -p callback_delay:=0.5
+  ros2 run turtle_py ex07_qos_subscriber --ros-args -p history_depth:=1 -p callback_delay:=0.5
   #     depth=10 으로 같은 실험을 하면 큐에 10개까지 쌓였다가 처리되는 차이를 볼 수 있습니다.
   # (4) 늦게 뜬 구독자가 /waypoints 를 받는가 (transient_local)
-  ros2 run turtle_examples ex07_qos_subscriber --ros-args -p topic:=waypoints -p msg_type:=WaypointList -p durability:=transient_local
+  ros2 run turtle_py ex07_qos_subscriber --ros-args -p topic:=waypoints -p msg_type:=WaypointList -p durability:=transient_local
 
 =====================================================================================
 진단 방법: ros2 topic info -v <토픽>
