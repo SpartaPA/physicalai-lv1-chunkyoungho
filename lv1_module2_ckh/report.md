@@ -166,3 +166,6 @@ lv1_module2_천경호/cpp_basics/sensors on  모듈2-시작 [!?⇡] via △ v
 lv1_module2_천경호/cpp_basics/sensors on  모듈2-시작 [!?⇡] via △ v3.22.1 
 ➜ ./mem.out   
 ```
+
+# 3. rclpy 노드 작성
+## 1.
