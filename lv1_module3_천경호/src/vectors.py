@@ -294,13 +294,12 @@ def gauss_eliminate(A, b, pivoting: bool = True, verbose: bool = False):
 
     
     # 전방소거 (row_echelon)
-    tol = 1e-12
+    tol = 1e-16
     a = agumented.astype(float, copy=True)
     m, n = a.shape
     n_swaps = 0
-    steps = []
+    steps = [a.copy()]
     if verbose:
-        steps = a[np.newaxis,:,:]
         print(f"[초기] 첨가행렬 [A|b]\n{a}")
 
     r = 0
@@ -320,17 +319,16 @@ def gauss_eliminate(A, b, pivoting: bool = True, verbose: bool = False):
             
         # 전방소거 - current_row 아래의 모든 행에서 col 열의 원소를 0으로 만들기
         for j in range(r + 1, m):
-            if np.abs(a[j, c]) > tol:
-                factor = a[j, c] / a[r, c]
+            factor = a[j, c] / a[r, c]
+            if factor != 0.0:
                 a[j, c:] -= factor * a[r, c:]
-                a[j,c] = 0.0 #부동소수점 오차 삭제
+                #a[j,c] = 0.0 #부동소수점 오차 삭제
         r+=1 #소거 완료 후 다음 행으로 이동
 
+        steps.append(a.copy())
         if verbose:
-            steps = np.concatenate((steps,a[np.newaxis,:,:]), axis=0)
             print(f"[{c+1}단계]\n{a}")
 
- 
     rank_A=rank(A)
     rank_agumented=rank(agumented)
 
