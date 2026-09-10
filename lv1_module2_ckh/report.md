@@ -178,7 +178,103 @@ angular_velocity: 0.0
 ---
 ```
 ## 2. ros2 topic hz /turtle_distance 출력: 평균 ___ Hz
+```bash
+➜ ros2 topic hz /turtle_distance
+average rate: 9.998
+	min: 0.100s max: 0.100s std dev: 0.00013s window: 11
+average rate: 9.999
+	min: 0.100s max: 0.100s std dev: 0.00012s window: 22
+average rate: 10.000
+	min: 0.100s max: 0.100s std dev: 0.00013s window: 33
+average rate: 9.999
+	min: 0.100s max: 0.100s std dev: 0.00014s window: 43
+average rate: 10.000
+	min: 0.100s max: 0.100s std dev: 0.00013s window: 54
+average rate: 10.000
+	min: 0.100s max: 0.100s std dev: 0.00013s window: 65
+
+```
+
 ## 3. 구독자 경고 로그 (터미널 출력)
+``` bash
+[WARN] [1789020894.383331879] [turtle_distance_subscriber]: 경고: 원점 거리 7.92 m > 임계 2.50 m
+[WARN] [1789020894.483497448] [turtle_distance_subscriber]: 경고: 원점 거리 7.92 m > 임계 2.50 m
+[WARN] [1789020894.583530181] [turtle_distance_subscriber]: 경고: 원점 거리 7.92 m > 임계 2.50 m
+
+```
 ## 4. 구독자 2개 동시 수신 확인 (양쪽 로그)
+![alt text](images/image.png)
+
 ## 5. 정사각형 주행 캡처 (turtlesim 화면)
+![alt text](images/turtlesim.png)
+
 ## 6. Ctrl+C 정상 종료 화면 (출력)
+```bash
+❯ ros2 run turtle_py ex03_distance_publisher    
+[INFO] [1789022527.604611583] [turtle_distance_publisher]: turtle_distance_publisher 시작: publish_rate=10.0 Hz
+^C[INFO] [1789022530.524337561] [turtle_distance_publisher]: Ctrl+C — 정상 종료합니다
+Failed to publish log message to rosout: publisher's context is invalid, at ./src/rcl/publisher.c:389
+
+```
+
+# 4. rclcpp 노드 작성
+
+## 1. colcon build 성공 출력
+```bash
+physicalai-lv1-chunkyoungho/lv1_module2_ckh/ros2_ws on  lv1-module2 [!?] 
+➜ colcon build --symlink-install
+[0.171s] WARNING:colcon.colcon_core.package_selection:Some selected packages are already built in one or more underlay workspaces:
+	'turtle_interfaces' is in: /home/pa28/kant_gits/physicalai-lv1-chunkyoungho/lv1_module2_ckh/ros2_ws/install/turtle_interfaces
+If a package in a merged underlay workspace is overridden and it installs headers, then all packages in the overlay must sort their include directories by workspace order. Failure to do so may result in build failures or undefined behavior at run time.
+If the overridden package is used by another package in any underlay, then the overriding package in the overlay must be API and ABI compatible or undefined behavior at run time may occur.
+
+If you understand the risks and want to override a package anyways, add the following to the command line:
+	--allow-overriding turtle_interfaces
+
+This may be promoted to an error in a future release of colcon-override-check.
+Starting >>> turtle_interfaces
+Starting >>> turtle_cpp
+Finished <<< turtle_interfaces [0.27s]                                                           
+Starting >>> turtle_py
+Finished <<< turtle_py [0.71s]                                                    
+Finished <<< turtle_cpp [5.03s]                     
+
+Summary: 3 packages finished [5.17s]
+
+```
+## 2. rclpy 발행에서 rclcpp 구독으로 이어진 로그
+```bash
+➜ ros2 run turtle_cpp ex04_distance_publisher
+➜ ros2 run turtle_py ex03_distance_publisher
+[INFO] [1789024460.723546310] [turtle_distance_publisher]: turtle_distance_publisher 시작: publish_rate=10.0 Hz
+^C[INFO] [1789024468.837786346] [turtle_distance_publisher]: Ctrl+C — 정상 종료합니다
+```
+```bash
+➜ ros2 run turtle_cpp ex04_distance_subscriber
+[INFO] [1789024301.683192094] [turtle_distance_subscriber]: turtle_distance_subscriber 시작: warn_distance=2.50
+[WARN] [1789024301.742161617] [turtle_distance_subscriber]: 경고: 원점 거리 7.22 m > 임계 2.50 m
+[WARN] [1789024301.842318265] [turtle_distance_subscriber]: 경고: 원점 거리 7.22 m > 임계 2.50 m
+[WARN] [1789024301.942415329] [turtle_distance_subscriber]: 경고: 원점 거리 7.22 m > 임계 2.50 m
+[WARN] [1789024302.042288731] [turtle_distance_subscriber]: 경고: 원점 거리 7.22 m > 임계 2.50 m
+[WARN] [1789024302.142291248] [turtle_distance_subscriber]: 경고: 원점 거리 7.22 m > 임계 2.50 m
+[WARN] [1789024302.242314558] [turtle_distance_subscriber]: 경고: 원점 거리 7.22 m > 임계 2.50 m
+[WARN] [1789024302.342504485] [turtle_distance_subscriber]: 경고: 원점 거리 7.22 m > 임계 2.50 m
+[WARN] [1789024302.442308116] [turtle_distance_subscriber]: 경고: 원점 거리 7.22 m > 임계 2.50 m
+[WARN] [1789024302.542210157] [turtle_distance_subscriber]: 경고: 원점 거리 7.22 m > 임계 2.50 m
+[WARN] [1789024302.642322919] [turtle_distance_subscriber]: 경고: 원점 거리 7.22 m > 임계 2.50 m
+[WARN] [1789024302.742496026] [turtle_distance_subscriber]: 경고: 원점 거리 7.22 m > 임계 2.50 m
+[WARN] [1789024302.842391847] [turtle_distance_subscriber]: 경고: 원점 거리 7.22 m > 임계 2.50 m
+[WARN] [1789024302.942313557] [turtle_distance_subscriber]: 경고: 원점 거리 7.22 m > 임계 2.50 m
+[WARN] [1789024303.042216178] [turtle_distance_subscriber]: 경고: 원점 거리 7.22 m > 임계 2.50 m
+[WARN] [1789024303.142428455] [turtle_distance_subscriber]: 경고: 원점 거리 7.22 m > 임계 2.50 m
+^C[INFO] [1789024303.221003517] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [1789024303.221234124] [turtle_distance_subscriber]: Ctrl+C — 정상 종료합니다
+```
+
+## 3. rclpy와 rclcpp 대응 관계표 — 노드 생성 / 타이머 / 콜백 / 종료 (4행)
+| 단계 | Python (`rclpy`) | C++ (`rclcpp`) |
+| :--- | :--- | :--- |
+| **노드 생성** | `node = rclpy.create_node('my_node')` | `auto node = std::make_shared<rclcpp::Node>("my_node");` |
+| **타이머** | `timer = node.create_timer(1.0, timer_callback)` | `auto timer = node->create_wall_timer(1s, timer_callback);` |
+| **콜백** | `def timer_callback(): node.get_logger().info('hi')` | `auto timer_callback = [&]() { RCLCPP_INFO(node->get_logger(), "hi"); };` |
+| **종료** | `rclpy.spin(node)` → `rclpy.shutdown()` | `rclcpp::spin(node);` → `rclcpp::shutdown();` |

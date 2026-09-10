@@ -24,6 +24,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            # 정다각형 주행 (sides 파라미터 3~12)
+            'ex04_polygon_driver = turtle_py.ex04_polygon_driver:main',
             # 문제 3
             'ex03_distance_publisher = turtle_py.ex03_distance_publisher:main',
             'ex03_distance_subscriber = turtle_py.ex03_distance_subscriber:main',
